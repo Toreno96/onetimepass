@@ -23,7 +23,7 @@ jobs:
         pip install -e .[dev]
     - name: Lint
       run: |
-        black --check -q . || echo 'Code is unformatted; try `black .`'
+        black --check -q . || { echo 'Code is unformatted; try `black .`'; exit 1; }
     - name: Test
       run: |
         python -m unittest
