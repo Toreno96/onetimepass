@@ -3,13 +3,12 @@ import datetime
 import hmac
 
 
-def _get_hmac_result(key: bytes, msg: bytes) -> bytes:
-    hmac_sha_1 = hmac.new(key, msg, digestmod="sha1")
-    return hmac_sha_1.digest()
+def _get_hmac_result(key: bytes, msg: bytes, hash_algorithm: str) -> bytes:
+    return hmac.digest(key, msg, hash_algorithm)
 
 
 def _dynamic_truncation(hmac_result: bytes) -> int:
-    offset = hmac_result[19] & 0xF
+    offset = hmac_result[-1] & 0xF
     bin_code = (
         (hmac_result[offset] & 0x7F) << 24
         | (hmac_result[offset + 1] & 0xFF) << 16
@@ -38,6 +37,7 @@ def _tz_aware_utcnow() -> datetime.datetime:
 class BaseOTPParameters:
     secret: bytes
     digits_count: int
+    hash_algorithm: str
 
 
 @dataclasses.dataclass
@@ -62,7 +62,10 @@ class TOTPParameters(BaseOTPParameters):
             / self.time_step_seconds
         )
         return HOTPParameters(
-            secret=self.secret, digits_count=self.digits_count, counter=time_counter,
+            secret=self.secret,
+            digits_count=self.digits_count,
+            hash_algorithm=self.hash_algorithm,
+            counter=time_counter,
         )
 
 
@@ -72,7 +75,9 @@ def hotp(parameters: HOTPParameters) -> int:
     As defined in https://tools.ietf.org/html/rfc4226.
     """
     hmac_result = _get_hmac_result(
-        parameters.secret, _counter_to_bytes(parameters.counter)
+        parameters.secret,
+        _counter_to_bytes(parameters.counter),
+        parameters.hash_algorithm,
     )
     return _truncate(hmac_result, parameters.digits_count)
 
